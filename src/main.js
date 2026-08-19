@@ -4,22 +4,18 @@ import gsap from "gsap";
 const row = document.querySelector(".row");
 const items = gsap.utils.toArray(".row__item");
 
-const MAX_GROW = 12; // active image ka flex-grow
-const MIN_GROW = 0.35; // sabse door wali images ka flex-grow
-const DECAY = 0.55; // har next neighbour pichli wali ka itna % rahega (0–1)
+const MAX_GROW = 12;
+const MIN_GROW = 0.35;
+const DECAY = 0.55;
+const MAX_CLIP_Y = 22;
+const SIGMA = 0.3;
+const SAMPLES = 15;
+const RADIUS = 15;
 
-// curve envelope — door wali images top/bottom se itna % tak clip hoti hain
-const MAX_CLIP_Y = 22; // % max top+bottom clip on farthest images
-const SIGMA = 0.3; // curve kitni wide phaile (fraction of row width)
-const SAMPLES = 15; // har image ke top/bottom edge pe kitne curve points (zyada = smoother round)
-const RADIUS = 15; // px — har image ke charo corners ka round radius
-
-// one quickTo per item -> buttery updates on every mousemove
 const growSetters = items.map((el) =>
   gsap.quickTo(el, "flexGrow", { duration: 0.45, ease: "power3.out" }),
 );
 
-// per-frame single measure pass — tween onUpdate ke andar DOM reads (forced reflow) na hon
 const sizes = items.map(() => ({ left: 0, w: 0, h: 0 }));
 function measure() {
   items.forEach((el, i) => {
@@ -31,19 +27,16 @@ function measure() {
 }
 measure();
 
-// har image ke top/bottom edge ko SAMPLES+1 points pe sample karke clip-path: path() banate hain —
-// curved edges + charo corners pe RADIUS ka round (quadratic corner arcs)
 const clips = items.map((el, i) => {
   const img = el.querySelector("img");
-  const depths = new Array(SAMPLES + 1).fill(0); // % clip depth at each sample point
+  const depths = new Array(SAMPLES + 1).fill(0);
 
   const apply = () => {
-    const { w, h } = sizes[i]; // cached — yahan koi layout read nahi
+    const { w, h } = sizes[i];
     if (!w || !h) return;
     const r = Math.min(RADIUS, w / 2 - 0.5);
     const f = (n) => n.toFixed(1);
 
-    // kisi bhi x pe clip depth (px) — samples ke beech linear interp
     const yAt = (px) => {
       const u = gsap.utils.clamp(0, SAMPLES, (px / w) * SAMPLES);
       const j = Math.min(Math.floor(u), SAMPLES - 1);
@@ -51,7 +44,6 @@ const clips = items.map((el, i) => {
       return ((depths[j] * (1 - t) + depths[j + 1] * t) / 100) * h;
     };
 
-    // edge ke points: corners chhod ke, taaki radius arc curve me smoothly blend ho
     const pts = [{ x: r, y: yAt(r) }];
     for (let j = 1; j < SAMPLES; j++) {
       const px = (j / SAMPLES) * w;
@@ -59,8 +51,6 @@ const clips = items.map((el, i) => {
     }
     pts.push({ x: w - r, y: yAt(w - r) });
 
-    // midpoint-quadratic smoothing: sample points control bante hain, curve unke
-    // beech se guzarti hai — corner junctions pe koi sharp kink nahi
     const smooth = (points, my) => {
       let seg = "";
       for (let i = 1; i < points.length - 1; i++) {
@@ -88,7 +78,6 @@ const clips = items.map((el, i) => {
   };
   apply();
 
-  // ek quickTo per sample point — sab share karte hain ek hi apply
   const setters = depths.map((_, j) =>
     gsap.quickTo(depths, j, {
       duration: 0.45,
@@ -99,7 +88,6 @@ const clips = items.map((el, i) => {
   return { setters, apply };
 });
 
-// gaussian bell: cursor ke paas 0 clip, door jaake MAX_CLIP_Y
 const clipAt = (x, cursorX, sigma) =>
   MAX_CLIP_Y * (1 - Math.exp(-((x - cursorX) ** 2) / (2 * sigma * sigma)));
 
@@ -109,7 +97,6 @@ function update(clientX) {
   const bounds = row.getBoundingClientRect();
   const sigma = bounds.width * SIGMA;
 
-  // cursor kis slot pe hai — fixed equal slots, taaki animate hoti widths se active na bhatke
   const ratio = gsap.utils.clamp(
     0,
     0.9999,
@@ -118,11 +105,9 @@ function update(clientX) {
   const active = Math.floor(ratio * items.length);
 
   items.forEach((_, i) => {
-    // width: active sabse badi, har step door wali usse chhoti
     const t = Math.pow(DECAY, Math.abs(i - active));
     growSetters[i](MIN_GROW + (MAX_GROW - MIN_GROW) * t);
 
-    // curve: image ki width ke saath-saath envelope ko multiple points pe sample karo
     clips[i].setters.forEach((set, j) => {
       const px = sizes[i].left + (j / SAMPLES) * sizes[i].w;
       set(clipAt(px, clientX, sigma));
@@ -135,8 +120,6 @@ row.addEventListener("mousemove", (e) => {
   update(lastX);
 });
 
-// frame loop: pehle SAB reads (measure), phir SAB writes (targets + clip paths) —
-// read/write interleave na hone se layout thrash nahi hota
 gsap.ticker.add(() => {
   measure();
   if (lastX !== null) update(lastX);
@@ -145,7 +128,6 @@ gsap.ticker.add(() => {
 
 window.addEventListener("resize", measure);
 
-// mouse nikalte hi sab wapas equal widths + full height pe
 row.addEventListener("mouseleave", () => {
   lastX = null;
   growSetters.forEach((set) => set(MIN_GROW));
