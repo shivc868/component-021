@@ -1,9 +1,9 @@
 :root {
-  --gap: 4px;               /* tight gap between images */
+  --gap: 4px;
   --radius: 4px;
   --bg: #0e0e0e;
   --fg: #f2f2f2;
-  --row-h: min(62vh, 560px); /* row height — widths follow from 2:3 */
+  --row-h: min(62vh, 560px);
 }
 
 * { box-sizing: border-box; }
@@ -22,8 +22,7 @@ html, body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* row screen ke vertical center me */
-  padding: 0;              /* side se koi gap nahi — row edge-to-edge */
+  justify-content: center;
 }
 
 .gallery__title {
@@ -36,7 +35,6 @@ html, body {
   opacity: 0.6;
 }
 
-/* one row — flex weights are animated by GSAP on hover */
 .row {
   display: flex;
   gap: var(--gap);
@@ -45,14 +43,13 @@ html, body {
 
 .row__item {
   position: relative;
-  flex: 1 1 0%;             /* GSAP animates flex-grow per item */
+  flex: 1 1 0%;
   min-width: 0;
   margin: 0;
   height: 100%;
   overflow: hidden;
   border-radius: var(--radius);
-  background: transparent;  /* clip hone pe peeche koi box na dikhe */
-  contain: layout paint;    /* har item apni paint boundary me — cheap repaints */
+  contain: layout paint;
 }
 
 .row__item img {
@@ -60,11 +57,11 @@ html, body {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;        /* image stays full-bleed while the box grows/shrinks */
+  object-fit: cover;
   object-position: center;
   display: block;
   pointer-events: none;
-  will-change: clip-path;   /* clip-path har frame animate hota hai */
-  transform: translateZ(0); /* apni compositor layer — smooth repaints */
+  will-change: clip-path;
+  transform: translateZ(0);
   backface-visibility: hidden;
 }
